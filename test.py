@@ -3,7 +3,9 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-for xm in list(np.linspace(0.1,2.001,5)):
+plt.figure(figsize=(6.3,4.0))
+
+for xm in list(np.linspace(0.5,2.001,9)):
     print xm
     #xm = 1.5
     l = 0.5
@@ -13,12 +15,12 @@ for xm in list(np.linspace(0.1,2.001,5)):
     HALF = 2* ( - bp.xm + l*bp.xp)
 
 
-    tA = np.linspace(0,np.pi,200)
+    tA = np.linspace(0,np.pi,300)
 
 
 #    tA = np.array([np.pi/4])
 
-#    gamma = ee.gamma(tA,xm,l,100)
+    gamma = ee.gamma(tA,xm,l)
 #    gammatest = ee.gamma_fast(tA,xm,l)
 
 #    theta_A = np.arccos(np.tanh(xm))+0.3
@@ -29,7 +31,9 @@ for xm in list(np.linspace(0.1,2.001,5)):
 #    plt.plot(B,thest)
 #    plt.plot(B,numthest)
 
-    croft = ee.crofton(tA,xm,l) * np.sin(tA)**2
+    croft = ee.crofton(tA,xm,l,fast=False) * np.sin(tA)**2
+
+    croft[ np.diff(croft) < - 0.2 ] = np.nan
 
     #tB = np.linspace(0,np.pi,100)
     #
@@ -49,4 +53,10 @@ for xm in list(np.linspace(0.1,2.001,5)):
     #
     #ax.plot_wireframe(mA,mB,gammaD)
 
+ax = plt.gca()
+ax.set_xlabel(r"$\theta_A$")
+ax.set_ylabel(r"$\Omega$")
+ax.set_ylim([-5,5])
 plt.show()
+plt.savefig('croftcrater.pgf', bbox_inches='tight')
+plt.savefig('croftcrater.pdf', bbox_inches='tight')

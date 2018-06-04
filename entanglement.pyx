@@ -26,7 +26,7 @@ def convertBubbleParameters(xm,l):
     return bp
 
 
-def gamma_overall(theta_A,theta_B, xm, l):
+def gamma_overall(theta_A,theta_B, xm, l): ## OBSOLETE
     '''Computes the finite part of the length of the polygonal chain ABB'A', divided by L_-. (The divergent part is 2*L_-*Lambda.
 
     This calculation is only sensible if theta_A satisfies the parallelism bound.
@@ -65,7 +65,7 @@ def gamma_vacuum(theta_A):
     '''Finite part of length of hyperbolic line of half-aperture theta_A, divided by L'''
     return 2*np.log(np.sin(theta_A))
 
-def gamma(theta_A,xm,l,nB=200):
+def gamma_old(theta_A,xm,l,nB=200):
 
     # reflect values
     tA = np.where(theta_A < np.pi/2, theta_A, np.pi-theta_A)
@@ -75,13 +75,11 @@ def gamma(theta_A,xm,l,nB=200):
     # parallelism bound
     # WHY + 0.01? Misteeeeeeeeeero
     bound = np.cos(tA) <= bp.tm# + 1.0/tA.shape[0]
- ,   
+ 
 
     gamma_vac = gamma_vacuum(tA)
 
     theta_B = np.linspace(0,np.pi/2,nB)
-#    print theta_B.shape
-#    print tA.shape
 
     gamma_ov = gamma_overall(tA,theta_B,xm,l)
 #    gamma_tominim = lambda theta_B : gamma_overall(theta_A, theta_B, xm, l)
@@ -111,9 +109,78 @@ def gamma(theta_A,xm,l,nB=200):
 #def dgammadb(tA, B, xm,l):
     # B is the sine of theta_B
 
+def taylorB(theta_A,bp):
+    epsiloney = np.pi/2 - theta_A
+    return np.pi/2 - epsiloney / ( 1 - np.exp(-bp.xm)/bp.cp)
 
 
-def gamma_fast(theta_A,xm,l):
+
+def extremalB(theta_A,bp,reverse=False):
+    # computes anglematching theta_B
+    # reverse = False: upper
+    # reverse = True: lower
+
+    if (not reverse):
+        t_B = taylorB(theta_A,bp)
+    else:
+        t_B = 1e-6
+
+    sign = -1 if reverse else 1
+
+    for i in range(1000 if reverse else 200 ):
+
+        cscalpha_1 = np.sqrt( 1+ (bp.cp*np.tan(t_B))**2)
+        Delta = theta_A-t_B
+        cscalpha_2 = np.cosh(np.arccosh(1/np.sin(Delta)) - bp.xm)
+
+        ca1 = np.log(cscalpha_1)
+        ca2 = np.log(cscalpha_2)
+        
+        t_B += 0.01*(ca1 - ca2) * sign
+
+        if (not reverse):
+                t_B = np.minimum(theta_A,np.maximum(0,t_B))
+        else:
+                t_B = np.minimum(theta_A-1e-6,np.maximum(0,t_B))
+
+
+    return t_B
+    
+def fixnan(arr):
+    # replaces all occurrences of nan with +inf
+    return np.where(np.isnan(arr),np.inf,arr)
+
+def gamma(theta_A_in,xm,l):
+    # reflect values
+    theta_A = np.where(theta_A_in < np.pi/2, theta_A_in, np.pi-theta_A_in)
+
+
+    bp = convertBubbleParameters(xm,l)
+
+    theta_B_anglematching = extremalB(theta_A,bp,True)
+    gamma_anglematching = gamma_raw(theta_A,theta_B_anglematching,bp)
+    gamma_anglematching = fixnan(gamma_anglematching)
+
+#    theta_B_taylored = taylorB(theta_A,bp)
+#    gamma_taylor = gamma_raw(theta_A,theta_B_taylored,bp)
+
+    gamma_vac = gamma_vacuum(theta_A)
+    bound_mask = ( np.cos(theta_A) <= bp.tm )
+    gamma_vac = np.where(bound_mask,np.inf,gamma_vac)
+    
+
+    gamma_final = np.minimum( 
+                        gamma_anglematching,
+             #       np.minimum(gamma_taylor,
+                    gamma_vac)
+
+    #print gamma_final
+
+    return gamma_final
+
+
+
+def gamma_fast(theta_A,xm,l): ## OBSOLETE
     # reflect values
     theta_A = np.where(theta_A < np.pi/2, theta_A, np.pi-theta_A)
 
@@ -208,7 +275,7 @@ def minimizationtest(tA,B,bp,l):
 def crofton(theta_A,xm,l,fast=True):
     function = gamma_fast if fast else gamma
 
-    step = 0.00001 
+    step = 0.000001 
     Sp = function(theta_A + step,xm,l)
     Sm = function(theta_A - step,xm,l)
     Sc = function(theta_A,xm,l)
